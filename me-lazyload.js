@@ -149,8 +149,8 @@ module.exports = angular.module('me-lazyload', [])
                     delete elements[uid];
                 }
 
-                $scrollContainer.off('scroll', checkImage);
-                $win.off('scroll', checkImage);
+                // $scrollContainer.off('scroll', checkImage);
+                // $win.off('scroll', checkImage);
             });
         }
     };
