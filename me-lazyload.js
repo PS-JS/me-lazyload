@@ -77,28 +77,42 @@ module.exports = angular.module('me-lazyload', [])
     //$win.bind('scroll', checkImage);
     $win.bind('resize', checkImage);
 
-    function onLoad(){
-        var $el = angular.element(this),
-            uid = getUid($el);
-
-        $el.css('opacity', 1);
-
-        if(elements.hasOwnProperty(uid)){
-            delete elements[uid];
-        }
-    }
-
     return {
         restrict: 'A',
         scope: {
             scrollContainer:'@',
             lazySrc: '@',
+            errorSrc: '@',
             animateVisible: '@',
             animateSpeed: '@'
         },
         link: function($scope, iElement){
+            
+                function onLoad(){
+                    var $el = angular.element(this),
+                        uid = getUid($el);
+
+                    $el.css('opacity', 1);
+
+                    if(elements.hasOwnProperty(uid)){
+                        delete elements[uid];
+                    }
+                }
+
+                function onError(){
+                    var $el = angular.element(this),
+                        uid = getUid($el);
+
+                    $el.attr('src', $scope.errorSrc);
+
+                    if(elements.hasOwnProperty(uid)){
+                        delete elements[uid];
+                    }
+                }
+            
 
             iElement.bind('load', onLoad);
+            iElement.bind('error', onError);
 
             var $scrollContainer = $win
             $scrollContainer.on('scroll', checkImage);
@@ -144,6 +158,8 @@ module.exports = angular.module('me-lazyload', [])
 
             $scope.$on('$destroy', function(){
                 iElement.unbind('load');
+                iElement.unbind('error');
+                
                 var uid = getUid(iElement);
                 if(elements.hasOwnProperty(uid)){
                     delete elements[uid];
