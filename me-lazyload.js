@@ -1,173 +1,128 @@
-module.exports = angular.module('me-lazyload', [])
-.directive('lazySrc', ['$window', '$document', function($window, $document){
-    var doc = $document[0],
-        body = doc.body,
-        win = $window,
-        $win = angular.element(win),
-        uid = 0,
-        elements = {};
-
-    function getUid(el){
-        var __uid = el.data("__uid");
-        if (! __uid) {
-            el.data("__uid", (__uid = '' + ++uid));
-        }
-        return __uid;
-    }
-
-    function getWindowOffset(){
-        var t,
-            pageXOffset = (typeof win.pageXOffset == 'number') ? win.pageXOffset : (((t = doc.documentElement) || (t = body.parentNode)) && typeof t.ScrollLeft == 'number' ? t : body).ScrollLeft,
-            pageYOffset = (typeof win.pageYOffset == 'number') ? win.pageYOffset : (((t = doc.documentElement) || (t = body.parentNode)) && typeof t.ScrollTop == 'number' ? t : body).ScrollTop;
-        return {
-            offsetX: pageXOffset,
-            offsetY: pageYOffset
-        };
-    }
-
-    function isVisible(iElement){
-        var elem = iElement[0],
-            elemRect = elem.getBoundingClientRect(),
-            windowOffset = getWindowOffset(),
-            winOffsetX = windowOffset.offsetX,
-            winOffsetY = windowOffset.offsetY,
-            elemWidth = elemRect.width,
-            elemHeight = elemRect.height,
-            elemOffsetX = elemRect.left + winOffsetX,
-            elemOffsetY = elemRect.top + winOffsetY,
-            viewWidth = Math.max(doc.documentElement.clientWidth, win.innerWidth || 0),
-            viewHeight = Math.max(doc.documentElement.clientHeight, win.innerHeight || 0),
-            xVisible,
-            yVisible;
-
-        if(elemOffsetY <= winOffsetY){
-            if(elemOffsetY + elemHeight >= winOffsetY){
-                yVisible = true;
+module.exports = angular.module('me-lazyimg', [])
+    .directive('lazyContainer', [
+        function(){
+            var uid = 0;
+            function getUid(el){
+                var __uid = el.data("__uid");
+                if (! __uid) {
+                    el.data("__uid", (__uid = '' + ++uid));
+                }
+                return __uid;
             }
-        }else if(elemOffsetY >= winOffsetY){
-            if(elemOffsetY <= winOffsetY + viewHeight){
-                yVisible = true;
-            }
-        }
 
-        if(elemOffsetX <= winOffsetX){
-            if(elemOffsetX + elemWidth >= winOffsetX){
-                xVisible = true;
-            }
-        }else if(elemOffsetX >= winOffsetX){
-            if(elemOffsetX <= winOffsetX + viewWidth){
-                xVisible = true;
-            }
-        }
+            return {
+                restrict: 'EA',
+                controller: ['$scope', '$element', function($scope, $element){
+                    var elements = {};
+                    function onLoad(){
+                        var $el = angular.element(this);
+                        var uid = getUid($el);
 
-        return xVisible && yVisible;
-    };
+                        $el.css('opacity', 1);
 
-    function checkImage(){
-        Object.keys(elements).forEach(function(key){
-            var obj = elements[key],
-                iElement = obj.iElement,
-                $scope = obj.$scope;
-            if(isVisible(iElement)){
-                iElement.attr('src', $scope.lazySrc);
-            }
-        });
-    }
-
-    //$win.bind('scroll', checkImage);
-    $win.bind('resize', checkImage);
-
-    return {
-        restrict: 'A',
-        scope: {
-            scrollContainer:'@',
-            lazySrc: '@',
-            errorSrc: '@',
-            animateVisible: '@',
-            animateSpeed: '@'
-        },
-        link: function($scope, iElement){
-            
-                function onLoad(){
-                    var $el = angular.element(this),
-                        uid = getUid($el);
-
-                    $el.css('opacity', 1);
-
-                    if(elements.hasOwnProperty(uid)){
-                        delete elements[uid];
+                        if(elements.hasOwnProperty(uid)){
+                            delete elements[uid];
+                        }
                     }
-                }
 
-                function onError(){
-                    var $el = angular.element(this),
-                        uid = getUid($el);
+                    function onError(){
+                        var $el = angular.element(this);
+                        //var uid = getUid($el);
 
-                    $el.attr('src', $scope.errorSrc);
-
-                    if(elements.hasOwnProperty(uid)){
-                        delete elements[uid];
+                        $el.attr('src', $el.attr('error-src'));
                     }
-                }
-            
 
-            iElement.bind('load', onLoad);
-            iElement.bind('error', onError);
+                    function isVisible(elem){
+                        var containerRect = $element[0].getBoundingClientRect();
+                        var elemRect = elem[0].getBoundingClientRect();
+                        var xVisible, yVisible;
+                        var offset = 50;
 
-            var $scrollContainer = $win
-            $scrollContainer.on('scroll', checkImage);
+                        if(elemRect.bottom + offset >= containerRect.top &&
+                            elemRect.top - offset <= containerRect.bottom){
+                            yVisible = true;
+                        }
 
+                        if(elemRect.right + offset >= containerRect.left &&
+                            elemRect.left - offset <= containerRect.right){
+                            xVisible = true;
+                        }
 
-            $scope.$watch('scrollContainer', function(){
-                $scrollContainer.off('scroll', checkImage);
+                        return xVisible&&yVisible;
+                    }
 
-                $scrollContainer = angular.element(document).find($scope.scrollContainer);
-                $scrollContainer.on('scroll', checkImage);
-            });
-
-
-            $scope.$watch('lazySrc', function(){
-                var speed = "1s";
-                if ($scope.animateSpeed != null) {
-                    speed = $scope.animateSpeed;
-                }
-                if(isVisible(iElement)){
-                    if ($scope.animateVisible) {
-                        iElement.css({
-                            'background-color': '#fff',
-                            'opacity': 0,
-                            '-webkit-transition': 'opacity ' + speed,
-                            'transition': 'opacity ' + speed
+                    function checkImage(){
+                        Object.keys(elements).forEach(function(uid){
+                            var obj = elements[uid],
+                                iElement = obj.iElement,
+                                iScope = obj.iScope;
+                            if(isVisible(iElement)){
+                                iElement.attr('src', iScope.lazySrc);
+                            }
                         });
                     }
-                    iElement.attr('src', $scope.lazySrc);
-                }else{
-                    var uid = getUid(iElement);
-                    iElement.css({
-                        'background-color': '#fff',
-                        'opacity': 0,
-                        '-webkit-transition': 'opacity ' + speed,
-                        'transition': 'opacity ' + speed
-                    });
-                    elements[uid] = {
-                        iElement: iElement,
-                        $scope: $scope
+
+                    this.addImg = function(iScope, iElement, iAttrs){
+                        iElement.bind('load', onLoad);
+                        iElement.bind('error', onError);
+
+                        iScope.$watch('lazySrc', function(){
+                            var speed = "1s";
+                            if (iScope.animateSpeed != null) {
+                                speed = iScope.animateSpeed;
+                            }
+                            if(isVisible(iElement)){
+                                if (iScope.animateVisible) {
+                                    iElement.css({
+                                        'background-color': '#fff',
+                                        'opacity': 0,
+                                        '-webkit-transition': 'opacity ' + speed,
+                                        'transition': 'opacity ' + speed
+                                    });
+                                }
+                                iElement.attr('src', iScope.lazySrc);
+                            }else{
+                                var uid = getUid(iElement);
+                                iElement.css({
+                                    'background-color': '#fff',
+                                    'opacity': 0,
+                                    '-webkit-transition': 'opacity ' + speed,
+                                    'transition': 'opacity ' + speed
+                                });
+                                elements[uid] = {
+                                    iElement: iElement,
+                                    iScope: iScope
+                                };
+                            }
+                        });
+                        iScope.$on('$destroy', function(){
+                            iElement.unbind('load');
+                            var uid = getUid(iElement);
+                            if(elements.hasOwnProperty(uid)){
+                                delete elements[uid];
+                            }
+                        });
                     };
-                }
-            });
 
-            $scope.$on('$destroy', function(){
-                iElement.unbind('load');
-                iElement.unbind('error');
-                
-                var uid = getUid(iElement);
-                if(elements.hasOwnProperty(uid)){
-                    delete elements[uid];
-                }
-
-                // $scrollContainer.off('scroll', checkImage);
-                // $win.off('scroll', checkImage);
-            });
+                    $element.bind('scroll', checkImage);
+                    $element.bind('resize', checkImage);
+                }]
+            };
         }
-    };
-}]);
+    ])
+    .directive('lazySrc', [
+        function(){
+            return {
+                restrict: 'A',
+                require: '^lazyContainer',
+                scope: {
+                    lazySrc: '@',
+                    animateVisible: '@',
+                    animateSpeed: '@'
+                },
+                link: function(iScope, iElement, iAttrs, containerCtrl){
+                    containerCtrl.addImg(iScope, iElement, iAttrs);
+                }
+            };
+        }
+    ]);
