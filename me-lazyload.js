@@ -104,7 +104,7 @@ module.exports = angular.module('me-lazyimg', [])
                         });
                     };
 
-                    $element.bind('scroll', checkImage);
+                    $element.get(0).addEventListener('scroll',checkImage,{passive:true});
                     $element.bind('resize', checkImage);
                 }]
             };
